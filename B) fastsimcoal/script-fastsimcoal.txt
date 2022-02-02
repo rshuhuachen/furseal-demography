@@ -59,3 +59,5 @@ do
 /prj/blackgrouse/bin/fsc27_linux64/fsc2702 -t AFS_RAD_alt4_allids.tpl -n 100000 -m -e AFS_RAD_alt4_allids.est -M -L 100 -q -w 0.01 --foldedSFS -x -C 5 --nosingleton
 mv AFS_RAD_alt4_allids AFS_RAD_alt4_allids_$i
 done
+
+# select best scenario with higest max likelihood
