@@ -60,4 +60,47 @@ do
 mv AFS_RAD_alt4_allids AFS_RAD_alt4_allids_$i
 done
 
-# select best scenario with higest max likelihood
+# collect all log likelihoods in one file
+for i in /prj/furseal-genome/RAD_demography/fastsimcoal/ALL_ids/alt_model4_allids*/AFS_RAD_alt4_allids_*; do cat $i/AFS_RAD_alt4_allids.bestlhoods >> prj/furseal-genome/RAD_demography/fastsimcoal/likelihoods/likelihoods_alt4_allids.txt; done
+
+for i in /prj/furseal-genome/RAD_demography/fastsimcoal/ALL_ids/null_model_allids/AFS_RAD_null_allids_*; do cat $i/AFS_RAD_null_allids.bestlhoods >> prj/furseal-genome/RAD_demography/fastsimcoal/likelihoods/likelihoods_null1_allids.txt; done
+
+# in R, choose the model with lowest AIC
+
+R
+
+likelihoods_alt4_all<- read.table("/prj/furseal-genome/RAD_demography/fastsimcoal/likelihoods/likelihoods_alt4_allids.txt")
+likelihoods_null1_all <- read.table("/prj/furseal-genome/RAD_demography/fastsimcoal/likelihoods/likelihoods_null1_allids.txt")
+
+# clean up col names etc
+## all ids
+head(likelihoods_null1_all)
+colnames(likelihoods_null1_all) <- c("NCUR", "MaxEstLhood", "MaxObsLhood")
+likelihoods_null1_all <- subset(likelihoods_null1_all, NCUR != "NCUR")
+likelihoods_null1_all[c(1:ncol(likelihoods_null1_all))] <- sapply(likelihoods_null1_all[c(1:ncol(likelihoods_null1_all))], as.character)
+likelihoods_null1_all[c(1:ncol(likelihoods_null1_all))] <- sapply(likelihoods_null1_all[c(1:ncol(likelihoods_null1_all))], as.numeric)
+
+head(likelihoods_alt4_all)
+colnames(likelihoods_alt4_all) <- c("NCUR", "NANC", "NBOT", "GR", "MaxEstLhood", "MaxObsLhood")
+likelihoods_alt4_all <- subset(likelihoods_alt4_all, NCUR != "NCUR")
+likelihoods_alt4_all[c(1:ncol(likelihoods_alt4_all))] <- sapply(likelihoods_alt4_all[c(1:ncol(likelihoods_alt4_all))], as.character)
+likelihoods_alt4_all[c(1:ncol(likelihoods_alt4_all))] <- sapply(likelihoods_alt4_all[c(1:ncol(likelihoods_alt4_all))], as.numeric)
+
+# add AIC
+
+# number of parameters for null model 1 = 1
+# number of parameters for null model 2 = 2
+# number of paramters for alt model 1 = 3 / for nr 2 = 4, for nr 3 = 3, for nr 4 = 3 (GR is complex)
+
+likelihoods_null1_all$AIC <- 2*(1) - 2*(likelihoods_null1_all$MaxEstLhood/log10(exp(1)))
+likelihoods_null1_all$deltaL <- likelihoods_null1_all$MaxObsLhood - likelihoods_null1_all$MaxEstLhood
+
+likelihoods_alt4_all$AIC <- 2*(3) - 2*(likelihoods_alt4_all$MaxEstLhood/log10(exp(1)))
+likelihoods_alt4_all$deltaL <- likelihoods_alt4_all$MaxObsLhood - likelihoods_alt4_all$MaxEstLhood
+
+# the best run is the one with the highest likelihood, or the smallest difference between the maximum possible likelihood (MaxObsLhood)
+# and the obtained likelihood (MaxEstLhood)
+
+
+
+
