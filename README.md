@@ -4,7 +4,7 @@ This repository includes the full workflow used for Hoffman et al. (in prep) "De
 
 Within this workflow, you will find:
 
-A) bash scripts used for alignment, SNP calling, SNP filtering
+A) bash scripts used for alignment, SNP calling, SNP filtering (not used in manuscript as we are working with genotype likelihoods)
 B) bash scripts and files used to run fastsimcoal for demographic modelling and non-parametric bootstrapping
 C) R-scripts used for plotting figures
 
