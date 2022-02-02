@@ -35,6 +35,8 @@ sink()
 
 ### Then continue with fastsimcoal in bash:
 # Three different files needed: .tpl (template), the .est (priors and rules file) and the .obs SFS estimates. These can be found within the B) fastsimcoal directory
+# files for null model: AFS_RAD_null_allids.est and files for null model: AFS_RAD_null_allids.tpl
+# files for alternative model: AFS_RAD_alt4_allids.est and files for null model: AFS_RAD_alt4_allids.tpl
 
 # There are seperate files for the two models: the null model and alternative model. For each, 100 simulations were run 100 times using the following scripts:
 
