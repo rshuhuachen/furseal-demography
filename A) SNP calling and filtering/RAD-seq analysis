@@ -1,0 +1,176 @@
+#############################################
+##### RAD-seq analysis from raw files #######
+#############################################
+
+# raw data is in fastq format, already demultiplexed, so there are two files for individuals: strand 1 and 2
+
+#############################################
+### Step 1: Quality control ###
+#############################################
+# data is located in /prj/furseal-genome/RAD-demography
+# use fastqc
+fastqc /prj/furseal-genome/RAD-demography
+
+#################################################
+### Step 2: Alignment to the reference genome ###
+#################################################
+
+## Step 2a: index for bwa
+#############################################
+# use bwa (index) to index reads of the fasta file reference genome. 
+# programs are located in /vol/biotools/bin 
+
+/vol/biotools/bin/bwa index /prj/furseal-genome/Seals/Seal_genome/antarctic_fur_seal_02Jun2018_WAj4l.fasta #to index the ref genome
+
+## Step 2b: alignment
+#############################################
+# use bwa (mem) , direct to reference genome
+
+# script ran:
+#!/bin/bash
+
+for i in /prj/furseal-genome/RAD_demography/*_1.fastq
+do
+/vol/biotools/bin/bwa mem -t 8 /prj/furseal-genome/Seals/Seal_genome/antarctic_fur_seal_02Jun2018_WAj4l.fasta $i ${i%_1.fastq}_2.fastq > ${i%_1.fastq}.sam
+done
+
+##################################################
+### Step 3: Convert sam to bam (binary version)###
+##################################################
+# use samtools (view)
+# script ran:
+
+#!/bin/bash
+
+for i in /prj/furseal-genome/RAD_demography/*.sam
+do
+/vol/biotools/bin/samtools view -S -b $i > ${i%sam}bam
+done
+
+#########################
+### Step 4: Sort bam ###
+#########################
+# Use samtools (sort). Sort in order of the reference genome
+# Code syntax
+# Script ran:
+
+#!/bin/bash
+
+for i in /prj/furseal-genome/RAD_demography/*.bam
+do
+/vol/biotools/bin/samtools sort $i -o ${i%bam}sorted.bam
+done
+
+###############################
+### Step 5: Index bam files ###
+###############################
+# Using samtools (index).
+
+#!/bin/bash
+
+for i in /prj/furseal-genome/RAD_demography/*.sorted.bam
+do
+/vol/biotools/bin/samtools index $i
+done
+
+###### Some stats 
+
+samtools coverage
+samtools tview 
+samtools stats
+bedtools genomecov 
+
+###############################################################
+################### SNP CALLING WITH BCFTOOLS #################
+###############################################################
+
+#################################################
+###### Step 1: create list of sample names ######
+#################################################
+
+# Create a list of sample names:
+ls -1 /prj/furseal-genome/RAD_demography/data/*.sorted.bam > bam_files.txt
+
+/vol/biotools/bin/bcftools mpileup -f /prj/furseal-genome/Seals/Seal_genome/antarctic_fur_seal_02Jun2018_WAj4l.fasta -C 50 -q 20 -b /prj/furseal-genome/RAD_demography/bam_files.txt -I --threads 8 | /vol/biotools/bin/bcftools call -Ov -v -m -o /prj/furseal-genome/RAD_demography/SNP_calls/AFS_RAD_rawSNPcalls.vcf 
+
+###############################
+#### Step 2: SNP filtering ####
+###############################
+
+### Overview:
+
+## 2a. Remove indels and more-than-biallelic SNPs
+## 2b. Remove single bad quality genotypes based on DP -> may need a bit of exploration
+## 2c. Keep only SNPs genotyped in at least X individuals -> plot
+## 2d. Remove loci with too high coverage
+## 2e. Minor Allele Frequency filtering (0.01)
+## 2f. Hardy Weinberg Equilibrium filtering
+## 2g. LD pruning
+
+######## Step 2a #########
+##########################
+
+## 1. Remove indels and more-than-biallelic SNPs 
+
+/vol/biotools/bin/vcftools --vcf /prj/furseal-genome/RAD_demography/SNP_calls/AFS_RAD_rawSNPcalls.vcf --remove-indels --min-alleles 2 --max-alleles 2 --recode --out /prj/furseal-genome/RAD_demography/SNP_calls/AFS_RAD_SNPcalls_noindel
+
+######## Step 2b + 2c #########
+##########################
+
+## 2 and 3. Remove single bad quality genotypes based on DP (SNP coverage) and then Keep only SNPs genotyped in at least X individuals.
+# (Step 2 will not remove SNPs. It will simply convert any individual genotype not passing the set DP threshold into a missing genotype)
+
+# For this step, we explored various thresholds. The following are the thresholds eventually chosen to ensure enough SNPs were retained 
+
+# a) Generate vcf files filtering out genotypes below a coverage of 5:
+
+/vol/biotools/bin/vcftools --vcf AFS_RAD_SNPcalls_noindel.recode.vcf --minDP 5 --recode --out AFS_RAD_SNPcalls_noindel_dp5
+
+# b) Filter each file to remove SNPs not genotyped in at least 90% of samples:
+
+/vol/biotools/bin/vcftools --vcf AFS_RAD_SNPcalls_noindel_dp5.recode.vcf --max-missing 0.9 --recode --out AFS_RAD_SNPcalls_noindel_dp5_mm09 #first done this one, but after rest of the steps too little snps left
+
+######## Step 2d #########
+##########################
+
+## 4. Remove loci with too high coverage (the idea is too remove SNPs from paralogous (i.e.: duplicated) loci)
+# First generate a SNP-based depth of coverage report:
+vcftools --vcf AFS_RAD_SNPcalls_noindel_dp5_mm09.recode.vcf --site-mean-depth --out DC_report
+
+
+# in R plotted the distribution, and calculated mean of 31.4 coverage (so double the mean = 63)
+# Then, remove SNPs with mean coverage greater than twice the mean of your dataset (in the example 63).
+vcftools --vcf AFS_RAD_SNPcalls_noindel_dp5_mm09.recode.vcf --max-meanDP 63 --recode --out AFS_RAD_SNPcalls_noindel_dp5_mm09_mDP63
+
+# After filtering, kept 11879 out of a possible 13477 Sites for dp10mm07 
+# After filtering, kept 37799 out of a possible 39392 Sites for dp7mm08
+# After filtering, kept 100730 out of a possible 102328 Sites for dp6mm08
+
+######## Step 2e #########
+##########################
+
+## 5. MAF filtering 
+vcftools --vcf AFS_RAD_SNPcalls_noindel_dp5_mm09_mDP63.recode.vcf --maf 0.01 --recode --out AFS_RAD_SNPcalls_noindel_dp5_mm09_mDP63_MAF0.01
+
+######## Step 2f #########
+##########################
+
+## 6. HWE filtering
+# Convert the vcf file into plink:
+## First make own chromosome map that vcftools uses to make .ped format by:
+
+/vol/biotools/bin/bcftools view -H AFS_RAD_SNPcalls_noindel_dp5_mm09_mDP63_MAF0.01.recode.vcf | cut -f 1 | uniq | awk '{print $0"\t"$0}' > AFS_RAD_SNPcalls.chrom-map.txt
+#make ped file with this chr map
+/vol/biotools/bin/vcftools --vcf AFS_RAD_SNPcalls_noindel_dp5_mm09_mDP63_MAF0.01.recode.vcf --plink --chrom-map AFS_RAD_SNPcalls.chrom-map.txt --out AFS_RAD_SNPcalls_noindel_dp5_mm09_mDP63_MAF0.01_MAF0.01
+
+# implement the HWE filtering
+/prj/blackgrouse/bin/plink --file AFS_RAD_SNPcalls_noindel_dp5_mm09_mDP63_MAF0.01 --aec --hwe midp 0.01 --make-bed --out AFS_RAD_SNPcalls_noindel_dp5_mm09_mDP63_MAF0.01_HWE
+
+######## Step 2g #########
+##########################
+
+## 7. LD pruning (remove loci in strong LD)
+# First generate a list of SNPs that are strongly linked, then remove strongly linked ones
+/prj/blackgrouse/bin/plink --bfile AFS_RAD_SNPcalls_noindel_dp5_mm09_mDP63_MAF0.01_HWE --aec -indep 50 5 2 --out AFS_RAD_SNPcalls_noindel_dp5_mm09_mDP63_MAF0.01_HWE_LD
+
+/prj/blackgrouse/bin/plink --bfile AFS_RAD_SNPcalls_noindel_dp5_mm09_mDP63_MAF0.01_HWE --exclude AFS_RAD_SNPcalls_noindel_dp5_mm09_mDP63_MAF0.01_HWE_LD.prune.out --make-bed --aec --out AFS_RAD_SNPcalls_noindel_dp5_mm09_mDP63_MAF0.01_MAF0.01_HWE_pruned
