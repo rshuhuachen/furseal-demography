@@ -16,7 +16,7 @@ sds<-apply(data,2,function(x) sd(x))
 write.table(cbind(avs,sds),"Simulated_avs_and_sds.txt",quote=F,row.names=F,col.names=F,sep="\t")
 
 # These can then be easily plotted against the empirical SFS
-emp<-read.table("Emp.sfs",h=f)
-data<-read.table("Sim_aver.txt",h=F)
-barplot(data[-c(1,2),1])
-barplot(emp[-c(1,2),1])
+emp<-t(read.table("Emp.sfs",h=F))
+data<-read.table("Simulated_avs_and_sds.txt",h=F)
+barplot(data[-c(2),1]) # |_ Exclude singletons (not used in the analysis)
+barplot(emp[-c(2),1])  # |
