@@ -1,1 +1,100 @@
+########### NON PARAMETRIC BOOTSTRAP ############
 
+### First create 1000 bootstrapped SFS with angsd
+/prj/blackgrouse/bin/angsd/misc/realSFS /prj/furseal-genome/RAD_demography/data/Folded_SFS_allids/Folded_SFS_allids.saf.idx -bootstrap 600 -maxIter 1000 -P 4 -fold 1 > /prj/furseal-genome/RAD_demography/data/Folded_SFS_allids/Folded_SFS_boot.sfs
+
+### The boostrapped SFS will be output within a single file
+### let's now work in a new folder
+mkdir Non_param_boot
+cd Non_param_boot
+
+# From within the Non_param_boot create 600 "boot" folders
+for i in {1..600}
+do
+mkdir boot_$i
+done
+
+# then extract the 1000 bootstrapped (each in one of the created folders) SFS and format than for fastsimcoal (in R)
+for i in {1..600}
+do
+head -$i ../Folded_SFS_boot.sfs | tail -1 > boot_$i/AFS_boot_raw.sfs
+done
+
+### R ###
+for (i in 1:600){
+sfs <- scan(paste("boot_",i,"/AFS_boot_raw.sfs",sep=""))
+sfs <- c(sfs, rep(0, length(sfs)-1))
+length(sfs)
+# create names
+sfs_names <- sapply(0:(length(sfs)-1), function(x) paste0("d0_", x))
+
+sink(paste("boot_",i,"AFS_RAD_alt4_allids_MAFpop0.obs ",sep=""))
+cat("1 observations")
+cat("\n")
+cat(sfs_names)
+cat("\n")
+cat(sfs)
+sink()
+}
+
+# Now that we have 600 folders each containing a bootstrapped SFS properly formatted,
+# let's put the .tpl and .est files in each folder and run fastsimcoal (100 simualtions for each bootstrapped sfs)
+for i in {1..600}
+do
+cp AFS_RAD_alt4_allids.tpl boot_$i/
+cp AFS_RAD_alt4_allids.est boot_$i/
+done
+
+./run_fsc.sh 
+
+# where run_fsc.sh is:
+
+##################################################
+##!/bin/bash
+
+for j in {1..600};
+do
+cd boot_$j
+
+for i in {1..100};
+do
+/vol/animalbehaviour/davidlee/bin/fsc27_linux64/fsc2702 -t AFS_RAD_alt4_allids.tpl -n 100000 -m -e AFS_RAD_alt4_allids.est -M -L 100 -q -w 0.01 --foldedSFS -x -C 5 --nosingleton
+mv AFS_RAD_alt4_allids AFS_RAD_alt4_allids_$i
+done
+
+cd ../
+done
+##################################################
+
+# Now let's select the best simluation for each bootstrapped sfs and compute 95% CIs
+# Get all likelihoods in separate files (separately for each boot folder)
+for i in {1..100}
+do
+cat boot_$i/AFS_RAD_alt4_allids_*/AFS_RAD_alt4_allids.bestlhoods | grep -v 'NCUR' > temp_bestL/bestL_$i.txt
+done
+
+# Create list of file names
+ls -1 bestL_* > file_list.txt
+
+# Use R to keep only best likelihoods per run
+### R ###
+files<-read.table("file_list.txt",h=F)
+best<-matrix( ,nrow=dim(files)[1],ncol=10) # nrow = dim(files)[1]
+
+for (i in 1:length(files[,1])){
+data<-read.table(paste(files[i,1],sep=""),h=F)
+ind<-which(data[,9]==max(data[,9]))
+best[i,]<-as.numeric(data[ind,])
+}
+
+colnames(best)<-c("NCUR","NANC","NBOT","T1","NGM","bla1","bla2","GR","MaxEst","MaxObs")
+write.table(best,"Best_Lhoods_600.txt",quote=F,col.names=T,row.names=F,sep="\t") # output file for record
+
+ncur<-best$NCUR
+nanc<-best$NANC
+nbot<-best$NBOT
+
+# Get 95% CIs
+quantile(ncur,prob=c(0.025,0.975))
+quantile(nanc,prob=c(0.025,0.975))
+quantile(nbot,prob=c(0.025,0.975))
