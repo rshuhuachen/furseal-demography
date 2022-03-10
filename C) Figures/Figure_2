@@ -1,0 +1,102 @@
+all<-read.table("Best_Lhoods_600.txt",h=T)
+ncur<-all$NCUR
+nanc<-all$NANC
+nbot<-all$NBOT
+
+# Let's get the Nepostsealing/Nepresealing ratio for plotting:
+rat<-ncur/nanc
+
+# Let's now plot things:
+# !!! Plot different bits which will be then assembled into a single figure with GIMP (sort of the free version of Photoshop)
+
+# bit 1
+# define function to plot 95% CIs in boxplot
+f <- function(x) {
+  r <- quantile(x, probs=c(0.025, 0.25, 0.5, 0.75, 0.975))
+  names(r) <- c("ymin", "lower", "middle", "upper", "ymax")
+  r
+}
+
+# Relabel a few things to have the plots appearing in the desired order
+labs<-c()
+labs[1:dim(all)[1]]<-"NPRE"
+labs[(dim(all)[1]+1):(2*dim(all)[1])]<-"Nbot"
+labs[(2*dim(all)[1]+1):(3*dim(all)[1])]<-"cur"
+msatp<-data.frame(FID=labs,smlh=c(nanc,nbot,ncur))
+bla<-msatp
+table(bla[,1])
+bla$FID<-as.character(bla$FID)
+bla[bla=="cur"]<-3
+bla[bla=="Nbot"]<-2
+bla[bla=="NPRE"]<-1
+
+# Output figure:
+tiff("AFS_BoxCI_2.tiff",width=5, height=6, units= 'in', res=600, pointsize=1/600)
+ggplot(bla, aes(y = smlh, x = FID)) +
+        geom_quasirandom(alpha = 0.5, size = 3, color = ("#7570b3"), width = 0.25, bandwidth = 3) + #width = 0.47, bandwidth = 2.5
+        stat_summary(fun.data = f, geom="boxplot",width = 0.1, outlier.shape = NA, color = "black", alpha = 0.8, lwd=0.5) +
+        theme_classic() +
+        scale_x_discrete(labels = c("NANC","NBOT","NCUR")) + 
+        scale_y_continuous(breaks = c(seq(from = 0, to = 70000, by = 10000)), limits = c(0,70000)) +
+        xlab("") +
+        ylab("Haploid effective population size") +
+		coord_flip()
+dev.off()	
+
+# Output zoom-ins:
+tiff("AFS_nbot.tiff",width=7, height=7, units= 'in', res=600, pointsize=1/600)
+ggplot(bla, aes(y = smlh, x = FID)) +
+        geom_quasirandom(alpha = 0.5, size = 3, color = ("#7570b3"), width = 0.37, bandwidth = 3) + #width = 0.47, bandwidth = 2.5
+        stat_summary(fun.data = f, geom="boxplot",width = 0.1, outlier.shape = NA, color = "black", alpha = 0.8, lwd=1) +
+        theme_classic() +
+        scale_x_discrete(labels = c("NCUR","NBOT","NANC")) + 
+        scale_y_continuous(breaks = c(seq(from = 0, to = 70000, by = 200)), limits = c(750,1400)) +
+        xlab("") +
+        ylab("Haploid effective population size") +
+        coord_flip()
+dev.off()
+
+tiff("AFS_nanc.tiff",width=7, height=7, units= 'in', res=600, pointsize=1/600)
+ggplot(bla, aes(y = smlh, x = FID)) +
+        geom_quasirandom(alpha = 0.5, size = 3, color = ("#7570b3"), width = 0.37, bandwidth = 3) + #width = 0.47, bandwidth = 2.5
+        stat_summary(fun.data = f, geom="boxplot",width = 0.1, outlier.shape = NA, color = "black", alpha = 0.8, lwd=1) +
+        theme_classic() +
+        scale_x_discrete(labels = c("NCUR","NBOT","NANC")) + 
+        scale_y_continuous(breaks = c(seq(from = 0, to = 70000, by = 2000)), limits = c(20000,27000)) +
+        xlab("") +
+        ylab("Haploid effective population size") +
+        coord_flip()
+dev.off()
+
+# Plot demographic schematic:
+# V4
+tiff("AFS_demog_2.tiff",width=6, height=8, units= 'in', res=600, pointsize=1/600)
+plot(5,5,col="white",xlim=c(0,9),ylim=c(-0.15,10),axes=F,xlab="",ylab="")
+
+segments(2.5,3,4,3,col="grey",lty=2)
+segments(2.5,5,5.5,5,col="grey",lty=2)
+
+rect(4,0,8,3,col="grey",border="grey")
+rect(5.4,3,6.6,5,col="grey",border="grey")
+polygon(x=c(3.5,5.4,6.6,8.5),y=c(9,5,5,9),col="grey",border="grey")
+
+text(6,1.5,bquote(paste('N'['e']*'pre-sealing')),cex=1.2)
+text(6,4,bquote(paste('N'['e']*'bot')),cex=1.2)
+text(6,7,bquote(paste('N'['e']*'post-sealing')),cex=1.2)
+
+
+segments(2.5,9,2.5,0,lwd=2)
+polygon(x=c(2.3,2.5,2.7),y=c(8.7,9,8.7),col="black",border="black")
+
+text(2.5,9.4,"Present",cex=1)
+text(2.5,-0.4,"Past",cex=1)
+
+segments(2.35,3,2.5,3,lwd=2)
+segments(2.35,5,2.5,5,lwd=2)
+
+text(2.1,3,"22",cex=1)
+text(2.1,5,"11",cex=1)
+text(2.1,8.85,"0",cex=1)
+text(1.5,4.5,'Time (generations ago)',cex=1.2,srt=90)
+dev.off()
+
