@@ -7,8 +7,8 @@
 #############################################
 ### Step 1: Quality control ###
 #############################################
-# data is located in /prj/furseal-genome/RAD-demography
-# use fastqc
+# raw data are located in /prj/furseal-genome/RAD-demography
+# use fastqc for qc
 fastqc /prj/furseal-genome/RAD-demography
 
 #################################################
@@ -19,12 +19,13 @@ fastqc /prj/furseal-genome/RAD-demography
 #############################################
 # use bwa (index) to index reads of the fasta file reference genome. 
 # programs are located in /vol/biotools/bin 
+# reference genome is located in /prj/furseal-genome/Seals/Seal_genome/antarctic_fur_seal_02Jun2018_WAj4l.fasta
 
 /vol/biotools/bin/bwa index /prj/furseal-genome/Seals/Seal_genome/antarctic_fur_seal_02Jun2018_WAj4l.fasta #to index the ref genome
 
 ## Step 2b: alignment
 #############################################
-# use bwa (mem) , direct to reference genome
+# use bwa (mem), direct to reference genome
 
 # script ran:
 #!/bin/bash
