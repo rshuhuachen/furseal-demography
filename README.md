@@ -1,4 +1,4 @@
-# Workflow for "Demographic reconstruction of Antarctic fur seals supports the krill surplus hypothesis", Hoffman et al (in prep)
+# Workflow for "Demographic reconstruction of Antarctic fur seals supports the krill surplus hypothesis", Hoffman et al. (2022)
 
 This repository includes the full workflow used for Hoffman et al. (2022) "Demographic reconstruction of Antarctic fur seals supports the krill surplus hypothesis". Genes Special Issue “Polar Genomics”, 13: 541 https://www.mdpi.com/2073-4425/13/3/541
 
